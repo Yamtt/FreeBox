@@ -167,11 +167,12 @@ gluonfx {
     graalvmHome = 'E:\\StudyTools\\graalvm-ce-java17-22.3.2'
 }
 
+def appDisplayName = 'FreeBox'
 jlink {
     imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
     launcher {
-        name = 'FreeBox'
+        name = appDisplayName
         jvmArgs = run.jvmArgs
     }
     mergedModule {
@@ -183,14 +184,17 @@ jlink {
         requires 'org.slf4j'
         uses 'cn.hutool.core.convert.Converter'
     }
-    jpackage.doFirst {
-        delete "${projectDir}/jpackage_temp"
+    tasks.named('jpackage') {
+        doFirst {
+            delete "${projectDir}/jpackage_temp"
+        }
     }
     jpackage {
         mainClassName = application.mainClass
-        applicationName = launcherName
-        installerName = launcherName
-        installerType = 'msi'
+        installerName = appDisplayName + "-" + getCurrentArch()
+        installerType = project.hasProperty('jpackage.installerType') ?
+                project.getProperties().get('jpackage.installerType') :
+                'msi'
         appVersion = project.version
         vendor = 'knifer'
         installerOptions = [
@@ -221,11 +225,11 @@ jlink {
                     '--linux-rpm-license-type', 'GPL-3.0-only',
                     '--resource-dir', "${projectDir}/resources/logo"
             ]
+            installerOptions += ['--linux-app-release', getCurrentArch()]
         } else if (org.gradle.internal.os.OperatingSystem.current().macOsX) {
             icon = "${projectDir}/resources/logo/FreeBox.icns"
+            // 修改输出的安装包名称
             installerOptions += [
-                    '--mac-sign',
-                    '--mac-signing-key-user-name', 'knifer',
                     '--mac-app-category', 'public.app-category.video'
             ]
         }
@@ -234,4 +238,17 @@ jlink {
 
 jlinkZip {
     group = 'distribution'
+}
+
+static def getCurrentArch() {
+    String arch = System.getProperty("os.arch")
+
+    switch (arch) {
+        case "x86_64":
+            return "amd64"
+        case "aarch64":
+            return "arm64"
+        default:
+            return arch
+    }
 }
